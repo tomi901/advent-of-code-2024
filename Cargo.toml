@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "create_new_day",
+    "template",
+    "xmas",
+]
+resolver = "2"
