@@ -3,5 +3,6 @@ members = [
     "create_new_day",
     "template",
     "xmas",
+    "day_01",
 ]
 resolver = "2"
