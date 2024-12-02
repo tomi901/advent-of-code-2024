@@ -1,18 +1,34 @@
 use std::num::ParseIntError;
 
-pub fn count_safe(input: &str) -> usize {
-    input.lines().filter(|&l| line_is_safe(l)).count()
+pub struct Count {
+    pub count: usize,
+    pub total: usize,
 }
 
-pub fn count_safe_with_tolerance(input: &str) -> usize {
+pub fn count_safe(input: &str) -> Result<Count, ParseIntError> {
     let reports = input.lines()
         .map(|l| parse_report(l))
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+        .collect::<Result<Vec<_>, _>>()?;
+    let count = reports.iter()
+        .filter(|&r| report_is_safe(r.iter().cloned()))
+        .count();
+    Ok(Count {
+        count,
+        total: reports.len(),
+    })
+}
 
-    reports.iter()
+pub fn count_safe_with_tolerance(input: &str) -> Result<Count, ParseIntError> {
+    let reports = input.lines()
+        .map(|l| parse_report(l))
+        .collect::<Result<Vec<_>, _>>()?;
+    let count = reports.iter()
         .filter(|r| report_is_safe_tolerant(r))
-        .count()
+        .count();
+    Ok(Count {
+        count,
+        total: reports.len(),
+    })
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -26,11 +42,6 @@ fn parse_report(line: &str) -> Result<Vec<i64>, ParseIntError> {
     line.split_whitespace()
         .map(|s| s.parse::<i64>())
         .collect::<Result<_, _>>()
-}
-
-fn line_is_safe(line: &str) -> bool {
-    let report = parse_report(line).unwrap();
-    report_is_safe(&mut report.into_iter())
 }
 
 fn report_is_safe(mut report: impl Iterator<Item = i64>) -> bool {
