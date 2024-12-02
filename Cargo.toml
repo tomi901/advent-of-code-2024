@@ -4,5 +4,6 @@ members = [
     "template",
     "xmas",
     "day_01",
+    "day_02",
 ]
 resolver = "2"
