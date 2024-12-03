@@ -6,22 +6,19 @@ use regex_static::{Regex, lazy_regex, once_cell::sync::Lazy};
 // TODO: In the future consider using nom instead?
 const INSTRUCTION_REGEX: Lazy<Regex> = lazy_regex!(r"mul\((\d+),(\d+)\)|do\(\)|don't\(\)");
 
-pub fn execute_instructions(input: &str) -> i64 {
-    INSTRUCTION_REGEX.captures_iter(input)
-        .map(|c| (
-            c.get(1).unwrap().as_str().parse::<i64>().unwrap(),
-            c.get(2).unwrap().as_str().parse::<i64>().unwrap(),
-        ))
-        .map(|(a, b)| a * b)
-        .sum()
+pub fn execute_instructions(input: &str) -> Result<i64, anyhow::Error> {
+    let instructions = Instruction::many_from_str(input).unwrap();
+    Ok(instructions.iter()
+        .map(Instruction::value)
+        .sum())
 }
 
-pub fn execute_instructions_conditionally(input: &str) -> i64 {
+pub fn execute_instructions_conditionally(input: &str) -> Result<i64, anyhow::Error> {
     let instructions = Instruction::many_from_str(input).unwrap();
     let mut enabled = true;
-    instructions.iter()
+    Ok(instructions.iter()
         .map(|i| i.execute_conditionally(&mut enabled))
-        .sum()
+        .sum())
 }
 
 
