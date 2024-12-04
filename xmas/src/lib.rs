@@ -8,3 +8,4 @@ pub mod keyed_ord;
 pub mod num;
 
 pub use result::display_result;
+pub use num::*;

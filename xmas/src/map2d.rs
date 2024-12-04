@@ -4,15 +4,18 @@ use thiserror::Error;
 
 use crate::point2d::Point2D;
 
+pub type ByteMap = Map2D<u8>;
+pub type CharMap = Map2D<char>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct Map2D {
-    map: Vec<u8>,
+pub struct Map2D<Tile = u8> {
+    map: Vec<Tile>,
     width: usize,
     height: usize,
 }
 
-impl Map2D {
-    pub fn new_filled(size: Point2D, tile: u8) -> Self {
+impl<T: Clone> Map2D<T> {
+    pub fn new_filled(size: Point2D, tile: T) -> Self {
         let width = size.0 as usize;
         let height = size.1 as usize;
         let map = vec![tile; width * height];
@@ -22,26 +25,78 @@ impl Map2D {
             height,
         }
     }
+}
 
+impl<T: Default> Map2D<T> {
     pub fn new_with_default_tiles(size: Point2D) -> Self {
-        Self::new_filled(size, Default::default())
+        let width = size.0 as usize;
+        let height = size.1 as usize;
+        let mut map = Vec::with_capacity(width * height);
+        for _ in 0..(width * height) {
+            map.push(T::default());
+        }
+        Self {
+            map,
+            width,
+            height,
+        }
+    }
+}
+
+impl<T> Map2D<T> {
+    pub fn from_str_with_parser<'a, Iter, Parser>(
+        s: &'a str,
+        parser: &mut Parser,
+    ) -> Result<Self, ParseMapError>
+        where Iter: Iterator<Item = T>,
+        Parser: FnMut(&'a str) -> Iter
+    {
+        if s.is_empty() {
+            return Err(ParseMapError::EmptyString);
+        }
+
+        let map = Vec::with_capacity(s.len());
+        let mut lines = s.lines();
+        
+        let first_line = lines.next().unwrap();
+
+        let mut map = Self { map, width: 0, height: 0 };
+        map.parse_and_add_row(first_line, parser)?;
+        for line in lines {
+            map.parse_and_add_row(line, parser)?;
+        }
+
+        Ok(map)
     }
 
-    pub fn parse_and_add_row(&mut self, line: &str) -> Result<(), ParseMapError> {
-        if line.len() != self.width {
-            return Err(ParseMapError::InconsistentRowSize { current: line.len(), expected: self.width });
+    pub fn parse_and_add_row<'a, Iter, Parser>(
+        &mut self,
+        line: &'a str,
+        parser: &mut Parser,
+    ) -> Result<(), ParseMapError>
+        where Iter: Iterator<Item = T>,
+        Parser: FnMut(&'a str) -> Iter
+    {
+        self.add_row(parser(line))
+    }
+
+    pub fn add_row(&mut self, row: impl Iterator<Item = T>) -> Result<(), ParseMapError> {
+        let tiles = row.collect::<Vec<T>>();
+        if self.height == 0 {
+            self.width = tiles.len();
+        } else if tiles.len() != self.width {
+            return Err(ParseMapError::InconsistentRowSize { current: tiles.len(), expected: self.width });
         }
-        self.map.extend(line.bytes());
+        self.map.extend(tiles.into_iter());
         self.height += 1;
         Ok(())
     }
-
 
     pub fn is_inside(&self, point: Point2D) -> bool {
         point.0 >= 0 && point.1 >= 0 && (point.0 as usize) < self.width && (point.1 as usize) < self.height
     }
 
-    pub fn set_tile(&mut self, point: Point2D, tile: u8) -> bool {
+    pub fn set_tile(&mut self, point: Point2D, tile: T) -> bool {
         if let Some(index) = self.get_index(point) {
             self.map[index] = tile;
             true
@@ -50,11 +105,11 @@ impl Map2D {
         }
     }
 
-    pub fn get_tile(&self, point: Point2D) -> Option<&u8> {
+    pub fn get_tile(&self, point: Point2D) -> Option<&T> {
         self.get_index(point).and_then(|i| self.map.get(i))
     }
 
-    pub fn get_tile_mut(&mut self, point: Point2D) -> Option<&mut u8> {
+    pub fn get_tile_mut(&mut self, point: Point2D) -> Option<&mut T> {
         self.get_index(point).and_then(|i| self.map.get_mut(i))
     }
 
@@ -67,23 +122,23 @@ impl Map2D {
             .flat_map(|y| (0..(self.width as isize)).map(move |x| Point2D(x, y)))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &u8> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = &T> + '_ {
         self.map.iter()
     }
 
-    pub fn iter_with_points(&self) -> impl Iterator<Item = (Point2D, &u8)> + '_ {
+    pub fn iter_with_points(&self) -> impl Iterator<Item = (Point2D, &T)> + '_ {
         (0..(self.height as isize))
             .flat_map(|y| (0..(self.width as isize)).map(move |x| Point2D(x, y)))
             .map(|p| (p, self.get_tile(p).unwrap()))
     }
 
-    pub fn row(&self, index: usize) -> &[u8] {
+    pub fn row(&self, index: usize) -> &[T] {
         let start = index * self.width;
         let end = start + self.width;
         &self.map[start..end]
     }
 
-    pub fn rows_iter(&self) -> impl Iterator<Item = &[u8]> {
+    pub fn rows_iter(&self) -> impl Iterator<Item = &[T]> {
         (0..self.height).map(|y| self.row(y))
     }
 
@@ -108,38 +163,35 @@ pub enum ParseMapError {
     InconsistentRowSize { current: usize, expected: usize },
 }
 
-impl FromStr for Map2D {
+impl FromStr for Map2D<u8> {
     type Err = ParseMapError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.is_empty() {
-            return Err(ParseMapError::EmptyString);
-        }
-
-        let map = Vec::with_capacity(s.len());
-        let mut lines = s.lines();
-        
-        let first_line = lines.next().unwrap();
-        let width = first_line.len();
-
-        let mut map = Self { map, width, height: 0 };
-        map.parse_and_add_row(first_line)?;
-        for line in lines {
-            map.parse_and_add_row(line)?;
-        }
-
-        Ok(map)
+        Self::from_str_with_parser(s, &mut str::bytes)
     }
 }
 
-impl Display for Map2D {
+impl Display for Map2D<u8> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let lines = (0..self.height).map(|y| {
-            let from = y * self.width;
-            &self.map[from..(from + self.width)]
-        });
-        for line in lines {
+        for line in self.rows_iter() {
             writeln!(f, "{}", String::from_utf8_lossy(line))?;
+        }
+        Ok(())
+    }
+}
+
+impl FromStr for Map2D<char> {
+    type Err = ParseMapError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_with_parser(s, &mut str::chars)
+    }
+}
+
+impl Display for Map2D<char> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for line in self.rows_iter() {
+            writeln!(f, "{}", line.iter().collect::<String>())?;
         }
         Ok(())
     }
@@ -152,7 +204,7 @@ mod tests {
 
     #[test]
     fn builds_map_correctly() {
-        let map = Map2D::new_with_default_tiles(Point2D(20, 10));
+        let map = ByteMap::new_with_default_tiles(Point2D(20, 10));
 
         assert_eq!(map.width, 20);
         assert_eq!(map.height, 10);
@@ -171,7 +223,7 @@ mod tests {
         #[case] point: Point2D,
         #[case] expected: Option<usize>,
     ) {
-        let map = Map2D::new_with_default_tiles(map_size);
+        let map = ByteMap::new_with_default_tiles(map_size);
         let index = map.get_index(point);
 
         assert_eq!(index, expected);
@@ -185,14 +237,14 @@ mod tests {
             "89AB\n",
         );
 
-        let map = Map2D::from_str(MAP).unwrap();
+        let map = ByteMap::from_str(MAP).unwrap();
         assert_eq!(map.width, 4);
         assert_eq!(map.height, 3);
     }
 
     #[test]
     fn parse_map_returns_empty_error() {
-        let result = Map2D::from_str("");
+        let result = ByteMap::from_str("");
         assert_eq!(result, Err(ParseMapError::EmptyString));
     }
 
@@ -204,7 +256,7 @@ mod tests {
             "89AB\n",
         );
 
-        let result = Map2D::from_str(MAP);
+        let result = ByteMap::from_str(MAP);
         assert_eq!(result, Err(ParseMapError::InconsistentRowSize { current: 3, expected: 4 }))
     }
 }
