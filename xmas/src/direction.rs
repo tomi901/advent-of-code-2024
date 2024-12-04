@@ -41,6 +41,10 @@ impl Direction {
         DIRECTIONS[final_value]
     }
 
+    pub fn inverse(&self) -> Self {
+        self.turn(QuarterRotation::TurnAround)
+    }
+
     fn value(&self) -> u8 {
         match self {
             Up => 0,
@@ -69,9 +73,9 @@ impl QuarterRotation {
     fn value(&self) -> u8 {
         match self {
             Self::None => 0,
-            Self::Left => 1,
+            Self::Right => 1,
             Self::TurnAround => 2,
-            Self::Right => 3,
+            Self::Left => 3,
         }
     }
 }
