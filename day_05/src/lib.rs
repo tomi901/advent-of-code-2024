@@ -71,22 +71,25 @@ pub fn process_middle_page_sum(input: &str) -> u64 {
 
 pub fn reordered_middle_page_sum(input: &str) -> u64 {
     let (orders, mut prints) = parse_info(input);
-    let priorities = PagePriorities::new(&orders);
-    // dbg!(&orders);
-    // dbg!(&priorities);
 
     let mut sum = 0;
     for print in &mut prints {
-        let original = print.clone();
-        print.sort_by_key(|page| priorities.get(page).cloned());
-        // println!("{:?} ->\n{:?}\n", original, print);
+        let pages_set = print.iter().cloned().collect::<HashSet<_>>();
+        let relevant_orders = orders.iter()
+            .filter(|&(before, after)| pages_set.contains(before) && pages_set.contains(after))
+            .cloned()
+            .collect::<Vec<_>>();
 
+        let priorities = PagePriorities::new(&relevant_orders);
+        let original = print.clone();
+
+        print.sort_by_key(|page| priorities.get(page));
         if original.eq(print) {
             continue;
         }
 
-        println!("Reordered: {:?}", &print);
-        sum += print[print.len() / 2]
+        sum += print[print.len() / 2];
+        // println!("{sum}");
     }
     sum
 }
