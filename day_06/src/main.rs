@@ -19,6 +19,9 @@ fn part_1() -> anyhow::Result<()> {
 
 fn part_2() -> anyhow::Result<()> {
     println!("Part 2:");
+    let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;
 
+    let result = day_06::find_loop_count(&input);
+    display_result(&result);
     Ok(())
 }
