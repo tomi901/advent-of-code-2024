@@ -1,7 +1,7 @@
 use std::{collections::HashSet, str::FromStr};
 
 use anyhow::Context;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use xmas::{direction::{Direction, QuarterRotation}, map2d::ByteMap, point2d::Point2D};
 
 
@@ -20,9 +20,9 @@ pub fn find_loop_count(input: &str) -> Result<usize, anyhow::Error> {
     let start = find_start(&map).context("No starting point")?;
 
     let original_visited = get_visited_tiles(&map, start);
-    Ok(original_visited.par_iter()
+    Ok(original_visited.into_par_iter()
         .filter(|&new_obstacle| {
-            if new_obstacle == &start {
+            if new_obstacle == start {
                 return false;
             }
             let mut cur_pos = start;
@@ -39,7 +39,7 @@ pub fn find_loop_count(input: &str) -> Result<usize, anyhow::Error> {
 
                 let next_pos = cur_pos + cur_dir.as_point();
                 match map.get_tile(next_pos) {
-                    Some(_) if &next_pos == new_obstacle => cur_dir = cur_dir.turn(QuarterRotation::Right),
+                    Some(_) if next_pos == new_obstacle => cur_dir = cur_dir.turn(QuarterRotation::Right),
                     Some(b'#') => cur_dir = cur_dir.turn(QuarterRotation::Right),
                     Some(_) => cur_pos = next_pos,
                     None => break,
