@@ -1,7 +1,7 @@
 use std::{collections::HashSet, str::FromStr, time::Instant};
 
 use anyhow::Context;
-use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use xmas::{direction::{Direction, QuarterRotation}, map2d::ByteMap, point2d::Point2D};
 
 
@@ -32,16 +32,17 @@ pub fn find_loop_count(input: &str) -> Result<usize, anyhow::Error> {
             let mut path = HashSet::new();
 
             loop {
-                if path.contains(&(cur_pos, cur_dir)) {
-                    // println!("Found loop");
-                    return true;
-                }
-                path.insert((cur_pos, cur_dir));
-
                 let next_pos = cur_pos + cur_dir.as_point();
                 match map.get_tile(next_pos) {
-                    Some(_) if next_pos == new_obstacle => cur_dir = cur_dir.turn(QuarterRotation::Right),
-                    Some(b'#') => cur_dir = cur_dir.turn(QuarterRotation::Right),
+                    Some(tile) if tile == &b'#' || next_pos == new_obstacle => {
+                        if path.contains(&(cur_pos, cur_dir)) {
+                            // println!("Found loop");
+                            return true;
+                        }
+                        path.insert((cur_pos, cur_dir));
+                        
+                        cur_dir = cur_dir.turn(QuarterRotation::Right);
+                    }
                     Some(_) => cur_pos = next_pos,
                     None => break,
                 }

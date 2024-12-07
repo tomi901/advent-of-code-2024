@@ -38,11 +38,17 @@ fn can_be_solved_recursive(expected: u64, already_calculated: u64, nums: &[u64],
 
     let rest = &nums[1..];
     operators.iter()
-        .any(|op| can_be_solved_recursive(
-            expected, op(already_calculated, next), rest, operators))
+        .any(|op| {
+            let calculated = op(already_calculated, next);
+            if calculated > expected {
+                return false;
+            }
+            can_be_solved_recursive(expected, calculated, rest, operators)
+        })
 }
 
 fn concatenate_nums(lhs: u64, rhs: u64) -> u64 {
-    let s = format!("{lhs}{rhs}");
-    s.parse().unwrap()
+    let digits = rhs.ilog10();
+    let mult = 10u64.pow(digits + 1);
+    lhs * mult + rhs
 }
