@@ -1,4 +1,4 @@
-use std::{collections::HashSet, str::FromStr};
+use std::{collections::HashSet, str::FromStr, time::Instant};
 
 use anyhow::Context;
 use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
@@ -20,7 +20,8 @@ pub fn find_loop_count(input: &str) -> Result<usize, anyhow::Error> {
     let start = find_start(&map).context("No starting point")?;
 
     let original_visited = get_visited_tiles(&map, start);
-    Ok(original_visited.into_par_iter()
+    let start_time = Instant::now();
+    let count = original_visited.into_par_iter()
         .filter(|&new_obstacle| {
             if new_obstacle == start {
                 return false;
@@ -47,7 +48,10 @@ pub fn find_loop_count(input: &str) -> Result<usize, anyhow::Error> {
             }
             false
         })
-        .count())
+        .count();
+    let elapsed = start_time.elapsed();
+    println!("Calculated in {:?}", elapsed);
+    Ok(count)
 }
 
 fn get_visited_tiles(map: &ByteMap, start: Point2D) -> HashSet<Point2D> {
