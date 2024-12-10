@@ -1,5 +1,5 @@
 use core::str;
-use std::{fmt::Display, str::FromStr};
+use std::{convert::Infallible, fmt::Display, str::FromStr};
 use thiserror::Error;
 
 use crate::point2d::Point2D;
@@ -156,11 +156,13 @@ impl<T> Map2D<T> {
 }
 
 #[derive(Debug, Error, PartialEq, Eq)]
-pub enum ParseMapError {
+pub enum ParseMapError<TileErr = Infallible> {
     #[error("Can't parse an empty string to a Map2D")]
     EmptyString,
     #[error("Inconsistent row size. Current: {current} Expected: {expected}")]
     InconsistentRowSize { current: usize, expected: usize },
+    #[error("Tile error @ {0}: {1}")]
+    TileParseError(Point2D, TileErr),
 }
 
 impl FromStr for Map2D<u8> {

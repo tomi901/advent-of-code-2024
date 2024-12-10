@@ -1,4 +1,4 @@
-use std::{char, cmp::Reverse, collections::{BinaryHeap, HashSet}, str::FromStr};
+use std::{cmp::Reverse, collections::{BinaryHeap, HashSet}, str::FromStr};
 
 use xmas::{direction::DIRECTIONS, keyed_ord::KeyedOrd, map2d::{ByteMap, ParseMapError}, point2d::Point2D};
 
