@@ -1,6 +1,6 @@
 use std::{char, cmp::Reverse, collections::{BinaryHeap, HashSet}, str::FromStr};
 
-use xmas::{direction::DIRECTIONS, keyed_ord::KeyedOrd, map2d::ByteMap, point2d::Point2D};
+use xmas::{direction::DIRECTIONS, keyed_ord::KeyedOrd, map2d::{ByteMap, ParseMapError}, point2d::Point2D};
 
 #[derive(Debug, Clone)]
 struct Breadcrumb {
@@ -15,16 +15,24 @@ impl Breadcrumb {
     }
 }
 
-pub fn calculate_hiking_score(input: &str) -> u64 {
-    let map = ByteMap::from_str(input).unwrap();
+pub fn calculate_hiking_score(input: &str) -> Result<u64, ParseMapError> {
+    let map = ByteMap::from_str(input)?;
+    Ok(calculate_hiking_score_from_anywhere(&map, false))
+}
 
+pub fn calculate_hiking_ratings(input: &str) -> Result<u64, ParseMapError> {
+    let map = ByteMap::from_str(input).unwrap();
+    Ok(calculate_hiking_score_from_anywhere(&map, true))
+}
+
+fn calculate_hiking_score_from_anywhere(map: &ByteMap, allow_repeats: bool) -> u64 {
     map.iter_with_points()
         .filter(|&(_, t)| t == &b'0')
-        .map(|(start, _)| calculate_hiking_score_from(&map, start))
+        .map(|(start, _)| calculate_hiking_score_from(&map, start, allow_repeats))
         .sum()
 }
 
-fn calculate_hiking_score_from(map: &ByteMap, start: Point2D) -> u64 {
+fn calculate_hiking_score_from(map: &ByteMap, start: Point2D, allow_repeats: bool) -> u64 {
     // println!("Calculating paths from {}...", start);
 
     let mut open_list = BinaryHeap::new();
@@ -36,10 +44,12 @@ fn calculate_hiking_score_from(map: &ByteMap, start: Point2D) -> u64 {
     while let Some(cur_candidate) = open_list.pop() {
         let cur_candidate = cur_candidate.0.value;
 
-        if closed_list.contains(&cur_candidate.point) {
-            continue;
+        if !allow_repeats {
+            if closed_list.contains(&cur_candidate.point) {
+                continue;
+            }
+            closed_list.insert(cur_candidate.point);
         }
-        closed_list.insert(cur_candidate.point);
         // unsafe {
         //     println!("Candidate {} @ {}", char::from_u32_unchecked(cur_candidate.value as u32), cur_candidate.point);
         // }
