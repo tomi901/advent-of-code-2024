@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, num::ParseIntError};
 
 // Cache was added on part 2
 
@@ -60,16 +60,16 @@ enum StoneResult {
     Split(u64, u64),
 }
 
-pub fn calculate_stone_count(input: &str, blinks: u64) -> usize {
+pub fn calculate_stone_count(input: &str, blinks: u64) -> Result<usize, ParseIntError> {
     let stones = input.trim()
         .split_whitespace()
-        .map(|s| s.parse::<u64>().unwrap())
-        .collect::<Vec<_>>();
+        .map(|s| s.parse::<u64>())
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut cache = StoneCache::default();
     let mut count = 0;
     for stone in &stones {
         count += cache.get_or_create_count_after(*stone, blinks);
     }
-    count
+    Ok(count)
 }
