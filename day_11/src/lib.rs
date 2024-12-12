@@ -71,5 +71,9 @@ pub fn calculate_stone_count(input: &str, blinks: u64) -> Result<usize, ParseInt
     for stone in &stones {
         count += cache.get_or_create_count_after(*stone, blinks);
     }
+
+    println!("Cache ended up with {} immediate result entries and {} results after X steps entries!",
+        cache.step_results.len(), cache.count_result_after_steps.len());
+
     Ok(count)
 }
