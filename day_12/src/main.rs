@@ -12,7 +12,7 @@ fn part_1() -> anyhow::Result<()> {
     println!("Part 1:");
     let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;
 
-    let result = day_12::calculate_fence_costs(&input);
+    let result = day_12::calculate_fence_costs(&input)?;
     display_result(&result);
     Ok(())
 }
@@ -21,7 +21,7 @@ fn part_2() -> anyhow::Result<()> {
     println!("Part 2:");
     let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;
 
-    let result = day_12::calculate_fence_costs_with_discount(&input);
+    let result = day_12::calculate_fence_costs_with_discount(&input)?;
     display_result(&result);
     Ok(())
 }
