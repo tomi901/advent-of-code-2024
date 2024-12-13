@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use num::Rational64;
 use xmas::point2d::Point2D;
 use regex_static::{once_cell::sync::Lazy, Regex, lazy_regex};
 
@@ -7,7 +8,29 @@ const DIGIT_REGEX: Lazy<Regex> = lazy_regex!(r"\d+");
 
 const A_COST: u64 = 3;
 const B_COST: u64 = 1;
-const PRESS_LIMIT: u64 = 100;
+
+#[derive(Debug, Clone, Copy)]
+struct Line {
+    slope: Rational64,
+    bias: Rational64,
+}
+
+impl Line {
+    fn eval(&self, x: Rational64) -> Rational64 {
+        x * self.slope + self.bias
+    }
+
+    fn intersection_with(&self, other: &Self) -> Option<Rational64> {
+        let new_slope = self.slope - other.slope;
+        if new_slope != Rational64::ZERO {
+            let x = (other.bias - self.bias) / new_slope;
+            // println!("Found intersection at {}", x);
+            Some(x)
+        } else {
+            None
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 struct Game {
@@ -17,9 +40,12 @@ struct Game {
 }
 
 impl Game {
-    fn many_from_str(s: &str) -> Result<Vec<Self>, anyhow::Error> {
+    fn many_from_str(s: &str, prize_adder: u64) -> Result<Vec<Self>, anyhow::Error> {
+        let prize_adder = prize_adder as isize;
         s.split("\n\n")
             .map(Self::from_str)
+            .map(|r|
+                r.map(|g| Game { prize: g.prize + Point2D(prize_adder, prize_adder), ..g }))
             .collect()
     }
 
@@ -30,30 +56,27 @@ impl Game {
     }
 
     fn lowest_button_presses(&self) -> Option<(u64, u64)> {
-        for a in 0..=PRESS_LIMIT {
-            let a_position = self.button_a * a as isize;
-            let diff = self.prize - a_position;
-            if diff.0 < 0 || diff.1 < 0 {
-                // Moved too far away
-                return None;
-            }
+        let x_line = Self::line_for_prize(self.button_a.0 as u64, self.button_b.0 as u64, self.prize.0 as u64);
+        let y_line = Self::line_for_prize(self.button_a.1 as u64, self.button_b.1 as u64, self.prize.1 as u64);
+        // dbg!((&x_line, &y_line));
 
-            if diff == Point2D(0, 0) {
-                return Some((a, 0));
-            }
+        let a = match x_line.intersection_with(&y_line) {
+            Some(x) if x.is_integer() => x,
+            _ => return None,
+        };
 
-            if diff.0 % self.button_b.0 != 0 || diff.1 % self.button_b.1 != 0 {
-                continue;
-            }
+        let b = match x_line.eval(a) {
+            y if y.is_integer() => y.to_integer() as u64,
+            _ => return None,
+        };
 
-            let move_amount = diff.0 / self.button_b.0;
-            if self.button_b.1 * move_amount != diff.1 {
-                continue;
-            }
+        Some((a.to_integer() as u64, b))
+    }
 
-            return Some((a, move_amount as u64))
-        }
-        None
+    fn line_for_prize(a: u64, b: u64, p: u64) -> Line {
+        let slope = -Rational64::new(a as i64, b as i64);
+        let bias = Rational64::new(p as i64, b as i64);
+        Line { slope, bias }
     }
 }
 
@@ -79,8 +102,8 @@ fn parse_coords(s: Option<&str>) -> Point2D {
     Point2D(x, y)
 }
 
-pub fn lowest_token_cost(input: &str) -> u64 {
-    let games = Game::many_from_str(input).unwrap();
+pub fn lowest_token_cost(input: &str, prize_adder: u64) -> u64 {
+    let games = Game::many_from_str(input, prize_adder).unwrap();
 
     // println!("Games: {:?}", games);
     games.iter()
