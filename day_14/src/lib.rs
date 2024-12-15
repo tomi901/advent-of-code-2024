@@ -1,5 +1,6 @@
-use std::str::FromStr;
-use xmas::{point2d::Point2D, wrap_val};
+use std::{collections::HashSet, str::FromStr};
+use crossterm::{event::KeyCode, execute};
+use xmas::{direction::DIRECTIONS_8, map2d::{ByteMap, CharMap}, point2d::Point2D, wrap_val};
 use regex_static::{once_cell::sync::Lazy, Regex, lazy_regex};
 
 const DIGIT_REGEX: Lazy<Regex> = lazy_regex!(r"-?\d+");
@@ -26,6 +27,74 @@ pub fn calculate_safety_factor(input: &str, seconds: isize, space: Point2D) -> u
     quadrants.into_iter()
         .reduce(|a, b| a * b)
         .unwrap_or(0)
+}
+
+pub fn find_christmas_tree_time(input: &str, space: Point2D) -> isize {
+    let robots: Vec<_> = input.lines()
+        .map(Robot::from_str)
+        .collect::<Result<_, _>>()
+        .unwrap();
+
+    'outer: for seconds in 1.. {
+        let mut positions = HashSet::new();
+        for robot in &robots {
+            let position = robot.predict_position(seconds, space);
+            positions.insert(position);
+        }
+
+        for &position in &positions {
+            if DIRECTIONS_8.map(|dir| position + dir).iter().any(|p| !positions.contains(p)) {
+                // We found a lone position, probably not a picture
+                continue 'outer;
+            }
+        }
+
+        let mut map = CharMap::new_filled(space, '.');
+        for &position in &positions {
+            map.set_tile(position, '#');
+        }
+
+        println!("After {} second/s:", seconds);
+        println!("{}", map);
+    }
+
+    todo!()
+}
+
+pub fn simulate_step_by_step(input: &str, space: Point2D) {
+    let robots: Vec<_> = input.lines()
+        .map(Robot::from_str)
+        .collect::<Result<_, _>>()
+        .unwrap();
+
+    execute!(
+        std::io::stdout(),
+    ).unwrap();
+
+    for seconds in 1.. {
+        let mut map = CharMap::new_filled(space, '.');
+        for robot in &robots {
+            let position = robot.predict_position(seconds, space);
+            map.set_tile(position, '#');
+        }
+
+        println!("After {} second/s:", seconds);
+        println!("{}", map);
+
+        /*
+        println!("Press enter to continue...");
+        loop {
+            match crossterm::event::read().unwrap() {
+                crossterm::event::Event::Key(key_event) => {
+                    if key_event.code == KeyCode::Enter {
+                        break;
+                    }
+                },
+                _ => (),
+            }
+        }
+        */
+    }
 }
 
 struct Robot {

@@ -1,10 +1,8 @@
 [package]
-name = "day_14"
+name = "day_15"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 anyhow = "1.0.89"
-crossterm = "0.28.1"
-regex_static = "0.1.1"
 xmas = { version = "0.1.0", path = "../xmas" }
