@@ -8,6 +8,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
+// 00:32:04
 fn part_1() -> anyhow::Result<()> {
     println!("Part 1:");
     let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;
@@ -17,6 +18,7 @@ fn part_1() -> anyhow::Result<()> {
     Ok(())
 }
 
+// 01:06:58
 fn part_2() -> anyhow::Result<()> {
     println!("Part 2:");
     let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;

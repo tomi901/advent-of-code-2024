@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{cell::RefCell, collections::HashSet, str::FromStr};
 use xmas::{direction::Direction, map2d::CharMap, point2d::Point2D};
 
 pub fn box_gps_sum(input: &str) -> isize {
@@ -21,9 +21,10 @@ pub fn box_gps_sum_wide(input: &str) -> isize {
     // warehouse.debug_display();
     let movements = parse_directions(movements_s);
 
-    warehouse.debug_display();
+    // warehouse.debug_display();
     for dir in movements {
         warehouse.move_robot(dir);
+        // println!("Moved: {:?}", dir);
         // warehouse.debug_display();
     }
 
@@ -33,6 +34,7 @@ pub fn box_gps_sum_wide(input: &str) -> isize {
 struct Warehouse {
     map: CharMap,
     robot: Point2D,
+    wide: bool,
 }
 
 impl Warehouse {
@@ -41,7 +43,7 @@ impl Warehouse {
             .find(|&(_, tile)| tile == &'@')
             .map(|(p, _)| p)
             .unwrap();
-        Self { map, robot }
+        Self { map, robot, wide: false }
     }
 
     pub fn clone_wide_version(&self) -> Self {
@@ -60,7 +62,7 @@ impl Warehouse {
             new_map.set_tile(new_point, new_tiles[0]);
             new_map.set_tile(new_point + Point2D(1, 0), new_tiles[1]);
         }
-        Self::new(new_map)
+        Self { wide: true, ..Self::new(new_map) }
     }
 
     pub fn box_gps_sum(&self) -> isize {
@@ -74,30 +76,77 @@ impl Warehouse {
         let start_pos = self.robot;
         let new_target_pos = start_pos + dir.as_point();
         
-        let mut push_pos = new_target_pos;
-        let mut moved_boxes = 0;
-        loop {
-            match self.map.get_tile(push_pos) {
-                Some('O') => {
-                    moved_boxes += 1;
-                    push_pos += dir.as_point();
-                },
-                // We cannot move
-                Some('#') => return,
-                Some(_) => break,
+        let push_boxes = RefCell::new(vec![]);
+        let mut already_pushing = HashSet::new();
+        // True if movement is valid, false if cancelled
+        let mut try_push = |point: Point2D| -> bool {
+            let pushing_box = match self.map.get_tile(point) {
+                Some('O' | '[') => point,
+                Some(']') => point + Point2D(-1, 0),
+                Some('#') => {
+                    // println!("Hit wall!");
+                    return false;
+                }
+                Some(_) => return true,
                 None => unreachable!(),
+            };
+
+            if already_pushing.contains(&pushing_box) {
+                return true;
+            }
+            // println!("Pushing: {}", pushing_box);
+
+            push_boxes.borrow_mut().push(pushing_box);
+            already_pushing.insert(pushing_box);
+            return true;
+        };
+
+        if !try_push(new_target_pos) {
+            return;
+        }
+
+        let mut i = 0;
+        while i < push_boxes.borrow().len() {
+            let box_pos = push_boxes.borrow()[i];
+            let new_box_pos = box_pos + dir.as_point();
+            if !try_push(new_box_pos) {
+                // println!("Chained hit wall!");
+                return;
+            }
+
+            if self.wide {
+                let right_point = new_box_pos + Point2D(1, 0);
+                // println!("Checking right side {right_point}...");
+                if !try_push(right_point) {
+                    // println!("Chained hit wall on the right!");
+                    return;
+                }
+            }
+
+            // println!("Iter {i}, list length is: {}", push_boxes.borrow().len());
+            i += 1;
+        }
+
+        for &pushed_box in &already_pushing {
+            self.map.set_tile(pushed_box, '.');
+            if self.wide {
+                self.map.set_tile(pushed_box + Point2D(1, 0), '.');
+            }
+        }
+
+        for &pushed_box in &already_pushing {
+            let new_point = pushed_box + dir.as_point();
+            if self.wide {
+                self.map.set_tile(new_point, '[');
+                self.map.set_tile(new_point + Point2D(1, 0), ']');
+            } else {
+                self.map.set_tile(new_point, 'O');
             }
         }
 
         self.robot = new_target_pos;
         self.map.set_tile(start_pos, '.');
         self.map.set_tile(new_target_pos, '@');
-        
-        push_pos = new_target_pos + dir.as_point();
-        for _ in 0..moved_boxes {
-            self.map.set_tile(push_pos, 'O');
-            push_pos += dir.as_point();
-        }
     }
 
     fn debug_display(&mut self) {
@@ -113,6 +162,15 @@ impl FromStr for Warehouse {
         Ok(Self::new(map))
     }
 }
+
+/*
+struct BoxPushes<'a> {
+    map: &'a CharMap,
+    dir: Direction,
+    pushing_boxes: Vec<Point2D>,
+    already_pushing: HashSet<Point2D>,
+}
+*/
 
 fn parse_directions(s: &str) -> Vec<Direction> {
     s.chars()
