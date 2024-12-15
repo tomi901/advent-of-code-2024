@@ -15,6 +15,21 @@ pub fn box_gps_sum(input: &str) -> isize {
     warehouse.box_gps_sum()
 }
 
+pub fn box_gps_sum_wide(input: &str) -> isize {
+    let (warehouse_s, movements_s) = input.split_once("\n\n").unwrap();
+    let mut warehouse = Warehouse::from_str(warehouse_s).unwrap().clone_wide_version();
+    // warehouse.debug_display();
+    let movements = parse_directions(movements_s);
+
+    warehouse.debug_display();
+    for dir in movements {
+        warehouse.move_robot(dir);
+        // warehouse.debug_display();
+    }
+
+    warehouse.box_gps_sum()
+}
+
 struct Warehouse {
     map: CharMap,
     robot: Point2D,
@@ -29,9 +44,28 @@ impl Warehouse {
         Self { map, robot }
     }
 
+    pub fn clone_wide_version(&self) -> Self {
+        let new_size = Point2D(self.map.width() as isize * 2, self.map.height() as isize);
+        let mut new_map = CharMap::new_filled(new_size, '.');
+        for (point, tile) in self.map.iter_with_points() {
+            let new_tiles = match tile {
+                '#' => ['#', '#'],
+                '.' => ['.', '.'],
+                '@' => ['@', '.'],
+                'O' => ['[', ']'],
+                _ => unreachable!(),
+            };
+
+            let new_point = Point2D(point.0 * 2, point.1);
+            new_map.set_tile(new_point, new_tiles[0]);
+            new_map.set_tile(new_point + Point2D(1, 0), new_tiles[1]);
+        }
+        Self::new(new_map)
+    }
+
     pub fn box_gps_sum(&self) -> isize {
         self.map.iter_with_points()
-            .filter_map(|(p, t)| (t == &'O').then_some(p))
+            .filter_map(|(p, t)| matches!(t, 'O' | '[').then_some(p))
             .map(|p| p.0 + (p.1 * 100))
             .sum()
     }
