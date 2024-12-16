@@ -39,6 +39,7 @@ fn get_best_paths(map: CharMap, start: Point2D, end: Point2D) -> Vec<Rc<Breadcru
 
     let mut best_scores = HashMap::new();
 
+    // Filtering to avoid loops is a mess, and DRY is thrown right to the bin here
     let mut best_paths: Vec<Rc<Breadcrumb>> = vec![];
     let mut best_cost = u64::MAX;
     while let Some(candidate) = open_list.pop() {
@@ -75,7 +76,7 @@ fn get_best_paths(map: CharMap, start: Point2D, end: Point2D) -> Vec<Rc<Breadcru
         let left_pos = candidate.pos + left.as_point();
 
         // println!("{forward}");
-        let previous_candidates = open_list.len();
+        // let previous_candidates = open_list.len();
         if map.get_tile(forward).is_some_and(|t| t != &'#') {
             // println!("Forward added");
             open_list.push(Breadcrumb {
