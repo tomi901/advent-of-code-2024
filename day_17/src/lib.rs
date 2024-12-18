@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::str::FromStr;
 use genawaiter::{rc::gen, yield_};
 use regex_static::{once_cell::sync::Lazy, Regex, lazy_regex};
 
@@ -31,7 +31,8 @@ pub fn calculate_required_a_value(input: &str) -> Register {
 // WON'T work with example input, use brute force from previous commit
 pub fn try_to_find_valid_a(a_subset: Register, program: &[TinyByte]) -> Option<Register> {
     // println!("Testing: {}", a_subset);
-    for test_a in a_subset..(a_subset + 8) {
+    let subset_min = if a_subset == 0 { 1 } else { a_subset };
+    for test_a in subset_min..(a_subset + 8) {
         let output: Vec<_> = Computer::with_a(test_a).execute(program).collect();
         let last_portion = &program[(program.len() - output.len())..];
         // println!("{} Match: {:?} matches with last portion of {:?}", test_a, output, last_portion);
