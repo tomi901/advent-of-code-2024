@@ -21,7 +21,7 @@ fn part_2() -> anyhow::Result<()> {
     println!("Part 2:");
     let input = std::fs::read_to_string("./input.txt").context("Error reading input file.")?;
 
-    let result = day_17::calculated_required_a_value(&input);
+    let result = day_17::calculate_required_a_value(&input);
     display_result(&result);
     Ok(())
 }

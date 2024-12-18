@@ -21,43 +21,31 @@ pub fn execute_all_instructions(input: &str) -> Vec<TinyByte> {
     computer.execute(&program).collect()
 }
 
-pub fn calculated_required_a_value(input: &str) -> Register {
-    let (computer, program) = parse_input(input);
+pub fn calculate_required_a_value(input: &str) -> Register {
+    let (_, program) = parse_input(input);
     println!("Target output = {:?}", program);
-    // Testing from a hardcoded range
-    let mut best_candidate_count = 0;
-    'outer: for a in 0..64 {
-        let mut new_computer = Computer { register_a: a, ..computer.clone() };
-        let output: Vec<_> = new_computer.execute(&program).collect();
-        println!("{:#08b} = {:?}", a, output);
 
-        // std::thread::sleep(Duration::from_secs(1));
-        // if output == program {
-        //     return a;
-        // }
+    try_to_find_valid_a(0, &program).unwrap()
+}
 
-        // if a % 10_000_000 == 0 {
-        //     println!("Testing: {}", a);
-        // }
+// WON'T work with example input, use brute force from previous commit
+pub fn try_to_find_valid_a(a_subset: Register, program: &[TinyByte]) -> Option<Register> {
+    // println!("Testing: {}", a_subset);
+    for test_a in a_subset..(a_subset + 8) {
+        let output: Vec<_> = Computer::with_a(test_a).execute(program).collect();
+        let last_portion = &program[(program.len() - output.len())..];
+        // println!("{} Match: {:?} matches with last portion of {:?}", test_a, output, last_portion);
+        if last_portion != output {
+            continue;
+        }
 
-        // let mut output_iter = new_computer.execute(&program);
-        // let mut candidate_count = 0;
-        // for &expected in &program {
-        //     if !output_iter.next().is_some_and(|output| output == expected) {
-        //         if candidate_count > best_candidate_count {
-        //             println!("Best candidate ({}): {}/{}", a, candidate_count, program.len());
-        //             best_candidate_count = candidate_count;
-        //         }
-        //         continue 'outer;
-        //     }
-        //     candidate_count += 1;
-        // }
-
-        // if output_iter.next().is_none() {
-        //     return a;
-        // }
+        if program.len() == output.len() {
+            return Some(test_a);
+        } else if let Some(val) = try_to_find_valid_a(test_a * 8, program) {
+            return Some(val);
+        }
     }
-    panic!("No solution found!");
+    None
 }
 
 fn parse_input(input: &str) -> (Computer, Vec<TinyByte>) {
@@ -100,6 +88,10 @@ impl Computer {
             register_b,
             register_c,
         }
+    }
+
+    pub fn with_a(register_a: Register) -> Self {
+        Self::new(register_a, 0, 0)
     }
 
     pub fn combo_value(&self, val: TinyByte) -> Register {
