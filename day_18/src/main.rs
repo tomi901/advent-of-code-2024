@@ -11,7 +11,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn example_1() -> anyhow::Result<()> {
-    println!("Part 1:");
+    println!("Example 1:");
     let input = std::fs::read_to_string("./input_example.txt").context("Error reading input file.")?;
 
     let result = day_18::calculate_path_after_bytes(&input, Point2D(7, 7), 12);
