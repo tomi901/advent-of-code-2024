@@ -155,6 +155,14 @@ impl<T> Map2D<T> {
     }
 }
 
+impl<T: PartialEq> Map2D<T> {
+    pub fn find(&self, tile: &T) -> Option<Point2D> {
+        self.iter_with_points()
+            .find(|&(_, t)| t == tile)
+            .map(|(point, _)| point)
+    }
+}
+
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum ParseMapError<TileErr = Infallible> {
     #[error("Can't parse an empty string to a Map2D")]
