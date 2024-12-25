@@ -23,36 +23,33 @@ pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, chea
         .map(|bc| (bc.point, bc.time))
         .collect();
 
-    let cheats = path.iter()
-        .map(|bc| bc.as_cheat(cheat_time))
-        .filter_map(|start| dijkstra::dijkstra(
-            &start,
-            |bc| {
-                bc.next_in(&map).map(|next| {
-                    let cost = base_cost
-                        - time_per_tile.get(&next.point).cloned().unwrap_or(base_cost)
-                        + 1;
-                    (next, cost)
-                })
-            },
-            |bc| bc.cheat_time == 0 && time_per_tile.contains_key(&bc.point),
-        ))
-        .filter_map(|(path, _)| {
-            let last_bc = path.last().unwrap();
-            let point = last_bc.point;
-            let original_time = *time_per_tile.get(&point).unwrap();
-            let new_time = last_bc.time;
-            if new_time >= original_time {
-                return None;
+    let mut cheats = vec![];
+    for bc in &path {
+        let from = bc.point;
+        let time_with_cheat = bc.time + cheat_time;
+
+        let cheat_range = -(cheat_time as isize)..=cheat_time as isize;
+        let check_points = cheat_range.clone()
+            .flat_map(|y| cheat_range.clone().map(move |x| Point2D(x, y)))
+            .filter(|p| p.manhattan_magnitude() == cheat_time as usize)
+            .map(|p| from + p);
+
+        for other_point in check_points {
+            let other_time = match time_per_tile.get(&other_point) {
+                Some(time) => *time,
+                None => continue,
+            };
+
+            if time_with_cheat >= other_time {
+                continue;
             }
-            
-            let save_time = original_time - new_time;
-            if save_time < shortcut_required_saving {
-                return None
+
+            let save_time = other_time - time_with_cheat;
+            if save_time >= shortcut_required_saving {
+                cheats.push(save_time);
             }
-            println!("Cheat {}: saved {} picoseconds", path.first().unwrap().point, save_time);
-            Some(save_time)
-        });
+        }
+    }
 
     let mut cheat_count = HashMap::new();
     for cheat in cheats {
@@ -74,47 +71,23 @@ pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, chea
 struct Breadcrumb {
     point: Point2D,
     time: u64,
-    cheat_time: u64,
-    just_enabled_cheat: bool,
 }
 
 impl Breadcrumb {
     pub fn new(point: Point2D) -> Self {
-        Breadcrumb { point, time: 0, cheat_time: 0, just_enabled_cheat: false }
+        Breadcrumb { point, time: 0 }
     }
 
     pub fn next_in<'a>(&self, map: &'a CharMap) -> impl Iterator<Item = Self> + 'a {
         let from = self.point;
         let next_time = self.time + 1;
-        let can_cheat = self.cheat_time > 0;
-        let just_enabled_cheat = self.just_enabled_cheat;
-        // if can_cheat {
-        //     println!("{}", self.cheat_time);
-        // }
-        let next_cheating_time = if can_cheat { self.cheat_time - 1 } else { 0 };
         DIRECTIONS.iter()
             .map(move |dir| from + dir.as_point())
-            .filter(move |point| map.get_tile(*point).is_some_and(|t| {
-                if just_enabled_cheat {
-                    t == &'#'
-                } else {
-                    can_cheat || t != &'#'
-                }
-            }))
+            .filter(move |point| map.get_tile(*point).is_some_and(|t| t != &'#'))
             .map(move |point| Breadcrumb {
                 point,
                 time: next_time,
-                cheat_time: next_cheating_time,
-                just_enabled_cheat: false,
             })
-    }
-
-    pub fn as_cheat(&self, cheat_time: u64) -> Self {
-        Self {
-            cheat_time,
-            just_enabled_cheat: true,
-            ..self.clone()
-        }
     }
 }
 
