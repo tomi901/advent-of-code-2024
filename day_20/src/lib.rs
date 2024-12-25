@@ -1,8 +1,8 @@
-use std::{collections::HashMap, hash::Hash};
+use std::{collections::{HashMap, HashSet}, hash::Hash};
 use xmas::{direction::DIRECTIONS, map2d::CharMap, point2d::Point2D};
 use pathfinding::directed::dijkstra;
 
-pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, cheat_time: u64) -> usize {
+pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, cheat_time: u64, debug: bool) -> usize {
     let map = input.parse::<CharMap>().unwrap();
     let start = map.find(&'S').unwrap();
     let end = map.find(&'E').unwrap();
@@ -25,17 +25,28 @@ pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, chea
 
     let mut cheats = vec![];
     for bc in &path {
-        let from = bc.point;
-        let time_with_cheat = bc.time + cheat_time;
+        let from: Point2D = bc.point;
+        let cur_time = bc.time;
 
-        let cheat_range = -(cheat_time as isize)..=cheat_time as isize;
-        let check_points = cheat_range.clone()
-            .flat_map(|y| cheat_range.clone().map(move |x| Point2D(x, y)))
-            .filter(|p| p.manhattan_magnitude() == cheat_time as usize)
-            .map(|p| from + p);
+        let mut points_to_check = vec![from];
+        let mut checked_points = HashSet::new();
+        while let Some(next_candidate) = points_to_check.pop() {
+            if checked_points.contains(&next_candidate) {
+                continue;
+            }
+            checked_points.insert(next_candidate);
+            let distance = next_candidate.manhattan_distance(from) as u64;
+            // println!("Checking {} -> {} (distance: {})", from, next_candidate, distance);
+            if distance > cheat_time {
+                continue;
+            }
 
-        for other_point in check_points {
-            let other_time = match time_per_tile.get(&other_point) {
+            points_to_check.extend(DIRECTIONS.iter()
+                .map(|dir| next_candidate + dir.as_point())
+                .filter(|p| !checked_points.contains(p)));
+
+            let time_with_cheat = cur_time + distance;
+            let other_time = match time_per_tile.get(&next_candidate) {
                 Some(time) => *time,
                 None => continue,
             };
@@ -56,10 +67,12 @@ pub fn calculate_best_shortcuts(input: &str, shortcut_required_saving: u64, chea
         *cheat_count.entry(cheat).or_insert(0) += 1;
     }
 
-    let mut cheat_count_vec: Vec<_> = cheat_count.iter().collect();
-    cheat_count_vec.sort_by_key(|kvp| kvp.0);
-    for (save_time, count) in cheat_count_vec {
-        println!("- There are {count} cheat/s that save {save_time} picoseconds.");
+    if debug {
+        let mut cheat_count_vec: Vec<_> = cheat_count.iter().collect();
+        cheat_count_vec.sort_by_key(|kvp| kvp.0);
+        for (save_time, count) in cheat_count_vec {
+            println!("- There are {count} cheat/s that save {save_time} picoseconds.");
+        }
     }
 
     // println!("{:#?}", cheat_count);
